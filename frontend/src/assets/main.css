@@ -1,0 +1,21 @@
+html,
+body,
+#app {
+  font-family:'Times New Roman',Georgia, Times, serif;
+  background: linear-gradient(207deg, #A0322C 0%, #EBC133 100%) no-repeat;
+  min-height:100vh;
+  margin: 0;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  display: flex;
+  margin-top: 62px;
+  min-height: calc(100vh - 96px);
+  justify-content: center;
+  align-items: center;
+}
