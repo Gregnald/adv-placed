@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, defineProps } from 'vue';
+import { ref, computed, defineProps, watch } from 'vue';
 
 const props = defineProps({
   searchQuery: {
@@ -8,23 +8,26 @@ const props = defineProps({
   },
   students: {
     type: Array,
-    default: null
+        default: () => []
   }
 });
 
+const emit = defineEmits(['student-updated']);
+
 const table_head = ['Enrollment No', 'Student Name', 'Course', 'Status', 'Blacklisted'];
 
-const defaultStudents = ref([
-    { enrollment: 'ENR001', name: 'Aisha Patel', course: 'MBA', status: 'active', blacklisted: false },
-    { enrollment: 'ENR002', name: 'Rohan Singh', course: 'BTech', status: 'Placed', blacklisted: false },
-    { enrollment: 'ENR003', name: 'Maya Rao', course: 'BBA', status: 'active', blacklisted: true },
-    { enrollment: 'ENR004', name: 'Kabir Shah', course: 'MCA', status: 'active', blacklisted: false }
-]);
+const localStudents = ref([]);
 
-const studentSource = computed(() => props.students && props.students.length ? props.students : defaultStudents.value);
+watch(
+    () => props.students,
+    (value) => {
+        localStudents.value = (value || []).map((student) => ({ ...student }));
+    },
+    { immediate: true, deep: true }
+);
 
 const filteredStudents = computed(() => {
-    const source = studentSource.value;
+        const source = localStudents.value;
     if (!props.searchQuery) return source;
     const query = props.searchQuery.toLowerCase();
     return source.filter((student) =>
@@ -38,7 +41,7 @@ const filteredStudents = computed(() => {
 const isStatusChangeable = (status) => false;
 
 const changeBlacklisted = (enrollment) => {
-    const student = students.value.find((s) => s.enrollment === enrollment);
+    const student = localStudents.value.find((s) => s.enrollment === enrollment);
     if (!student) {
         return;
     }
@@ -55,12 +58,11 @@ const changeBlacklisted = (enrollment) => {
         student.status = student.previousStatus;
         delete student.previousStatus;
     }
-    // call API here
-    // updateStudent(student)
+    emit('student-updated', { enrollment: student.enrollment, payload: { blacklisted: student.blacklisted, status: student.status } });
 };
 
 const changeStatus = (enrollment) => {
-    const student = students.value.find((s) => s.enrollment === enrollment);
+    const student = localStudents.value.find((s) => s.enrollment === enrollment);
     if (!student || !isStatusChangeable(student.status)) {
         return;
     }

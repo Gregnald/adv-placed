@@ -1,68 +1,33 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
   searchQuery: {
     type: String,
     default: ''
+  },
+  drives: {
+    type: Array,
+    default: () => []
   }
 });
 
+const emit = defineEmits(['drive-updated']);
+
 const table_head = ['Drive ID', 'Company Name', 'Start Date', 'End Date', 'Students Participating', 'Status'];
 
-const drives = ref([
-    {
-        driveId: 'DRV001',
-        companyName: 'Google Inc.',
-        startDate: '2026-09-01',
-        endDate: '2026-09-10',
-        studentsParticipating: 45,
-        status: 'Approved',
-        expanded: false,
-        jdInfo: {
-            jobTitle: 'Software Engineer Intern',
-            jobDescription: 'Work on core search and AI products with a cross-functional team.',
-            jobCompensation: 'Competitive stipend with relocation support.',
-            companyWebsite: 'www.google.com',
-            hrMail: 'recruiting@google.com'
-        }
-    },
-    {
-        driveId: 'DRV002',
-        companyName: 'Microsoft Inc.',
-        startDate: '2026-10-05',
-        endDate: '2026-10-12',
-        studentsParticipating: 32,
-        status: 'Rejected',
-        expanded: false,
-        jdInfo: {
-            jobTitle: 'Cloud Solutions Associate',
-            jobDescription: 'Support Azure deployment and cloud-native service development.',
-            jobCompensation: 'Salary plus bonus and benefits package.',
-            companyWebsite: 'www.microsoft.com',
-            hrMail: 'careers@microsoft.com'
-        }
-    },
-    {
-        driveId: 'DRV003',
-        companyName: 'Skyroot',
-        startDate: '2026-11-01',
-        endDate: '2026-11-08',
-        studentsParticipating: 12,
-        status: 'Approved',
-        expanded: false,
-        jdInfo: {
-            jobTitle: 'Aerospace Systems Intern',
-            jobDescription: 'Support launch vehicle development and test operations.',
-            jobCompensation: 'Internship stipend with travel allowance.',
-            companyWebsite: 'www.skyroot.com',
-            hrMail: 'jobs@skyroot.com'
-        }
-    }
-]);
+const localDrives = ref([]);
+
+watch(
+  () => props.drives,
+  (value) => {
+    localDrives.value = (value || []).map((drive) => ({ ...drive, expanded: false }));
+  },
+  { immediate: true, deep: true }
+);
 
 const toggleExpand = (driveId) => {
-    drives.value = drives.value.map((drive) => {
+    localDrives.value = localDrives.value.map((drive) => {
         if (drive.driveId === driveId) {
             return { ...drive, expanded: !drive.expanded };
         }
@@ -71,9 +36,9 @@ const toggleExpand = (driveId) => {
 };
 
 const filteredDrives = computed(() => {
-    if (!props.searchQuery) return drives.value;
+    if (!props.searchQuery) return localDrives.value;
     const query = props.searchQuery.toLowerCase();
-    return drives.value.filter((drive) =>
+    return localDrives.value.filter((drive) =>
         drive.driveId.toLowerCase().includes(query) ||
         drive.companyName.toLowerCase().includes(query) ||
         drive.status.toLowerCase().includes(query)
@@ -81,7 +46,7 @@ const filteredDrives = computed(() => {
 });
 
 const toggleStatus = (driveId) => {
-    const drive = drives.value.find((drive) => drive.driveId === driveId);
+    const drive = localDrives.value.find((drive) => drive.driveId === driveId);
     if (drive) {
         if (drive.status === 'Approved') {
             drive.status = 'Rejected';
@@ -90,6 +55,7 @@ const toggleStatus = (driveId) => {
         } else {
             drive.status = 'Approved';
         }
+        emit('drive-updated', { driveId: drive.driveId, payload: { status: drive.status } });
     }
 };
 </script>
@@ -102,7 +68,7 @@ const toggleStatus = (driveId) => {
             </tr>
         </thead>
         <tbody>
-            <template v-for="drive in drives" :key="drive.driveId">
+            <template v-for="drive in filteredDrives" :key="drive.driveId">
                 <tr class="table-entries" @click="toggleExpand(drive.driveId)">
                     <td>{{ drive.driveId }}</td>
                     <td>{{ drive.companyName }}</td>

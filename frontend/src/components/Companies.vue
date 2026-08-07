@@ -1,26 +1,35 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
   searchQuery: {
     type: String,
     default: ''
+    },
+    companies: {
+        type: Array,
+        default: () => []
   }
 });
 
+const emit = defineEmits(['company-updated']);
+
 const table_head = ['Employer', 'Website', 'HR Mail', 'Status', 'Blacklisted'];
 
-const companies = ref([
-    { employer: 'Google Inc.', website: 'www.google.com', hr_mail: 'gmail', status: 'active', blacklisted: false },
-    { employer: 'Apple Inc.', website: 'www.apple.com', hr_mail: 'apple_mail', status: 'requested', blacklisted: false },
-    { employer: 'Microsoft Inc.', website: 'www.microsoft.com', hr_mail: 'M_mail', status: 'active', blacklisted: false },
-    { employer: 'Skyroot', website: 'www.skyroot.com', hr_mail: 'sky_mail', status: 'denied', blacklisted: false }
-]);
+const localCompanies = ref([]);
 
 const statusOptions = ['active', 'requested', 'inactive', 'denied'];
 
+watch(
+    () => props.companies,
+    (value) => {
+        localCompanies.value = (value || []).map((company) => ({ ...company }));
+    },
+    { immediate: true, deep: true }
+);
+
 const normalizeBlacklistedCompanies = () => {
-    companies.value.forEach((company) => {
+        localCompanies.value.forEach((company) => {
         if (company.blacklisted && company.status !== 'denied') {
             company.previousStatus = company.status;
             company.status = 'denied';
@@ -31,9 +40,9 @@ const normalizeBlacklistedCompanies = () => {
 normalizeBlacklistedCompanies();
 
 const filteredCompanies = computed(() => {
-    if (!props.searchQuery) return companies.value;
+    if (!props.searchQuery) return localCompanies.value;
     const query = props.searchQuery.toLowerCase();
-    return companies.value.filter((company) =>
+        return localCompanies.value.filter((company) =>
         company.employer.toLowerCase().includes(query) ||
         company.website.toLowerCase().includes(query) ||
         company.hr_mail.toLowerCase().includes(query) ||
@@ -42,7 +51,7 @@ const filteredCompanies = computed(() => {
 });
 
 const changeBlacklisted = (companyName) => {
-    const company = companies.value.find((company) => company.employer === companyName);
+        const company = localCompanies.value.find((company) => company.employer === companyName);
     if (!company) {
         return;
     }
@@ -59,10 +68,11 @@ const changeBlacklisted = (companyName) => {
         company.status = company.previousStatus;
         delete company.previousStatus;
     }
+    emit('company-updated', { companyName: company.employer, payload: { blacklisted: company.blacklisted, status: company.status } });
 };
 
 const changeStatus = (companyName, newStatus) => {
-    const company = companies.value.find((company) => company.employer === companyName);
+    const company = localCompanies.value.find((company) => company.employer === companyName);
     if (!company) {
         return;
     }
@@ -73,25 +83,7 @@ const changeStatus = (companyName, newStatus) => {
     }
 
     company.status = newStatus;
-};
-
-const denyRequest = (companyName) => {
-    const company = companies.value.find((company) => company.employer === companyName);
-    if (company && company.status !== 'denied') {
-        company.status = 'denied';
-        delete company.previousStatus;
-        // call API here
-        // updateCompany(company)
-    }
-};
-
-const restoreRequest = (companyName) => {
-    const company = companies.value.find((company) => company.employer === companyName);
-    if (company && company.status === 'denied') {
-        company.status = 'requested';
-        // call API here
-        // updateCompany(company)
-    }
+    emit('company-updated', { companyName: company.employer, payload: { status: newStatus, blacklisted: company.blacklisted } });
 };
 
 </script>

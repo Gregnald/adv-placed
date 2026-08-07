@@ -91,7 +91,7 @@ onMounted(() => {
         </div>
         <div class="form-row">
             <label for="company-name">Company Name</label>
-            <input required id="company-name" v-model="companyName" placeholder="Enter company's name" />
+            <input required id="company-name" v-model="companyName" placeholder="Enter company's name" readonly />
         </div>
         <div class="form-row">
             <label for="company-website">Company Website</label>
@@ -99,7 +99,7 @@ onMounted(() => {
         </div>
         <div class="form-row">
             <label for="hr-mail">HR Mail</label>
-            <input required id="hr-mail" v-model="hrMail" placeholder="Enter HR's mail" />
+            <input required id="hr-mail" v-model="hrMail" placeholder="Enter HR's mail" readonly />
         </div>
     </div>
 </template>

@@ -1,64 +1,38 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import router from '@/router';
 import JD from './JD.vue';
+import { api } from '@/services/api';
 
 const jobRef = ref(null);
 const showCreateForm = ref(false);
 const company = ref({
-  name: localStorage.getItem('companyName') || 'Skyroot Technologies',
-  approvalStatus: 'Approved'
+  employer: localStorage.getItem('companyName') || '',
+  hr_mail: localStorage.getItem('companyHRMail') || '',
+  status: 'requested'
 });
 
-const drives = ref([
-  {
-    driveId: 'DRV201',
-    companyName: company.value.name,
-    jobTitle: 'Aerospace Systems Intern',
-    startDate: '2026-10-01',
-    endDate: '2026-10-10',
-    status: 'Approved',
-    studentsParticipating: 34,
-    applicationDeadline: '2026-09-25',
-    minCgpa: 8.0,
-    eligibleBranches: ['Aerospace', 'Mechanical'],
-    eligibleYears: ['3rd Year'],
-    jdInfo: {
-      jobTitle: 'Aerospace Systems Intern',
-      jobDescription: 'Support launch vehicle development and test operations.',
-      jobCompensation: 'Internship stipend with travel allowance.',
-      companyWebsite: 'www.skyroot.com',
-      hrMail: 'jobs@skyroot.com'
-    }
-  },
-  {
-    driveId: 'DRV202',
-    companyName: company.value.name,
-    jobTitle: 'Propulsion Analyst Trainee',
-    startDate: '2026-11-05',
-    endDate: '2026-11-15',
-    status: 'Pending',
-    studentsParticipating: 0,
-    applicationDeadline: '2026-10-28',
-    minCgpa: 7.5,
-    eligibleBranches: ['Aerospace', 'Mechanical'],
-    eligibleYears: ['3rd Year', '4th Year'],
-    jdInfo: {
-      jobTitle: 'Propulsion Analyst Trainee',
-      jobDescription: 'Analyze propulsion subsystem performance and support design decisions.',
-      jobCompensation: 'Competitive stipend and learning support.',
-      companyWebsite: 'www.skyroot.com',
-      hrMail: 'recruiting@skyroot.com'
-    }
+const drives = ref([]);
+
+const selectedDriveId = ref(null);
+
+const applications = ref([]);
+
+const loadDashboard = async () => {
+  const payload = await api.getCompanyDashboard();
+  company.value = payload.company || company.value;
+  drives.value = payload.drives || [];
+  applications.value = payload.applications || [];
+  if (company.value.employer) {
+    localStorage.setItem('companyName', company.value.employer);
   }
-]);
-
-const selectedDriveId = ref(drives.value[0]?.driveId || null);
-
-const applications = ref([
-  { applicationId: 'APP301', studentName: 'Aisha Patel', driveId: 'DRV201', status: 'Applied', resume: 'ananya-sharma-resume.pdf' },
-  { applicationId: 'APP302', studentName: 'Rohan Singh', driveId: 'DRV201', status: 'Shortlisted', resume: 'rohan-singh-resume.pdf' },
-  { applicationId: 'APP303', studentName: 'Maya Rao', driveId: 'DRV202', status: 'Pending', resume: 'maya-rao-resume.pdf' }
-]);
+  if (company.value.hr_mail) {
+    localStorage.setItem('companyHRMail', company.value.hr_mail);
+  }
+  if (!selectedDriveId.value && drives.value.length) {
+    selectedDriveId.value = drives.value[0].driveId;
+  }
+};
 
 const summaryStats = computed(() => ({
   totalDrives: drives.value.length,
@@ -77,54 +51,66 @@ const selectDrive = (driveId) => {
   selectedDriveId.value = driveId;
 };
 
-const createDrive = () => {
+const createDrive = async () => {
   if (!jobRef.value) return;
   const data = jobRef.value.getJobData();
   if (!data.jobTitle || !data.startDate || !data.endDate || !data.applicationDeadline) return;
 
-  const nextNumber = drives.value.length + 1;
-  const nextId = `DRV${200 + nextNumber}`;
-  drives.value.push({
-    driveId: nextId,
-    companyName: data.companyName || company.value.name,
+  await api.createCompanyDrive({
     jobTitle: data.jobTitle,
+    jobDescription: data.jobDescription,
+    jobCompensation: data.jobCompensation,
     startDate: data.startDate,
     endDate: data.endDate,
-    status: 'Pending',
-    studentsParticipating: 0,
     applicationDeadline: data.applicationDeadline,
     minCgpa: data.minCgpa,
     eligibleBranches: data.eligibleBranches,
     eligibleYears: data.eligibleYears,
-    jdInfo: {
-      jobTitle: data.jobTitle,
-      jobDescription: data.jobDescription,
-      jobCompensation: data.jobCompensation,
-      companyWebsite: data.companyWebsite,
-      hrMail: data.hrMail
-    }
+    companyWebsite: data.companyWebsite,
+    hrMail: data.hrMail
   });
   showCreateForm.value = false;
-  selectedDriveId.value = nextId;
+  await loadDashboard();
 };
 
-const updateApplicationStatus = (id, newStatus) => {
-  const application = applications.value.find((item) => item.applicationId === id);
-  if (application) {
-    application.status = newStatus;
+const updateApplicationStatus = async (id, newStatus) => {
+  await api.updateApplication(id, { status: newStatus });
+  await loadDashboard();
+};
+
+const logout = async () => {
+  try {
+    await api.logout();
+  } finally {
+    localStorage.removeItem('sessionId');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('companyName');
+    localStorage.removeItem('companyHRMail');
+    await router.push({ name: 'home' });
+    window.location.reload();
   }
 };
+
+onMounted(() => {
+  loadDashboard().catch(() => {
+    drives.value = [];
+    applications.value = [];
+  });
+});
 </script>
 
 <template>
   <div class="company-dashboard">
-    <div class="dash-head"><h1>Company</h1></div>
+    <div class="dash-head">
+      <h1>Company</h1>
+      <button class="logout-button" @click="logout">Logout</button>
+    </div>
     <hr />
 
     <div class="company-info">
       <div>
-        <h2>{{ company.name }}</h2>
-        <p class="company-status">{{ company.approvalStatus }}</p>
+        <h2>{{ company.employer }}</h2>
+        <p class="company-status">{{ company.status }}</p>
       </div>
       <div class="company-actions">
         <button @click="showCreateForm = !showCreateForm">
@@ -237,11 +223,26 @@ const updateApplicationStatus = (id, newStatus) => {
 
 .dash-head {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
 }
 
 h1 {
   font-size: 3em;
+}
+
+.logout-button {
+  border: none;
+  background: #d32f2f;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background: #a12722;
 }
 
 .company-info {

@@ -2,14 +2,14 @@
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 
-const userID = ref(localStorage.getItem('userID'));
+const sessionId = ref(localStorage.getItem('sessionId'));
 
-const updateUserID = () => {
-  userID.value = localStorage.getItem('userID');
+const updateSessionId = () => {
+    sessionId.value = localStorage.getItem('sessionId');
 };
 
 onMounted(() => {
-  window.addEventListener('user-storage-updated', updateUserID);
+    window.addEventListener('user-storage-updated', updateSessionId);
 });
 </script>
 <template>
@@ -20,9 +20,9 @@ onMounted(() => {
         <h3>IITM Placement Portal</h3>
         <nav>
             <RouterLink class="nav-button" to="/">Home</RouterLink>
-            <RouterLink v-if="userID" class="nav-button" to="/dashboard">Dashboard</RouterLink>
-            <RouterLink v-if="!userID" class="nav-button" to="/login">Login</RouterLink>
-            <RouterLink v-if="!userID" class="nav-button" to="/signup">Sign-up</RouterLink>
+            <RouterLink v-if="sessionId" class="nav-button" to="/dashboard">Dashboard</RouterLink>
+            <RouterLink v-if="!sessionId" class="nav-button" to="/login">Login</RouterLink>
+            <RouterLink v-if="!sessionId" class="nav-button" to="/signup">Sign-up</RouterLink>
         </nav>
     </header>
 </template>

@@ -5,12 +5,11 @@ import AdminDashboard from '@/components/AdminDashboard.vue';
 import CompanyDashboard from '@/components/CompanyDashboard.vue';
 import StudentDashboard from '@/components/StudentDashboard.vue';
 
-// const userType = ref(localStorage.getItem('userType') || 'admin');
-const userType = ref('company')
+const userType = ref(localStorage.getItem('userType') || 'student');
 
 onMounted(() => {
-  const userID = localStorage.getItem('userID');
-  if (!userID) router.push({ name: 'home' });
+  const sessionId = localStorage.getItem('sessionId');
+  if (!sessionId) router.push({ name: 'home' });
 });
 </script>
 

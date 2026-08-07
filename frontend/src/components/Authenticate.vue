@@ -1,10 +1,11 @@
 <script setup>
-import {ref,computed,defineProps,onMounted} from 'vue';
+import { ref, defineProps, onMounted } from 'vue';
 import router from '@/router';
+import { api } from '@/services/api';
 
 onMounted(() => {
-    const userID = ref(localStorage.getItem("userID"));
-    if(userID.value)router.push({name:'dashboard'})
+    const sessionId = ref(localStorage.getItem('sessionId'));
+    if(sessionId.value)router.push({name:'dashboard'})
 });
 
 const props = defineProps({
@@ -19,7 +20,6 @@ const user = ref('student');
 const username = ref('');
 const password = ref('');
 const message = ref('');
-const status = ref();
 const companyName = ref('');
 const companyHRMail = ref('');
 
@@ -28,7 +28,7 @@ const changeUser = (newUser) => {
 };
 
 
-const handleSubmit = function(){
+const handleSubmit = async function(){
     if(props.registering && user.value === 'admin'){
         message.value = "Can't sign-up as Admin";
         return;
@@ -38,19 +38,35 @@ const handleSubmit = function(){
         return;
     }
 
-    if (props.registering && user.value === 'company') {
-        if (!companyName.value || !companyHRMail.value) {
-            message.value = 'Please provide company name and HR mail.';
-            return;
-        }
-        localStorage.setItem('companyName', companyName.value);
-        localStorage.setItem('companyHRMail', companyHRMail.value);
-    }
+    try {
+        const payload = {
+            username: username.value,
+            password: password.value,
+            role: user.value
+        };
 
-    localStorage.setItem('userID', username.value);
-    localStorage.setItem('userType', user.value);
-    window.dispatchEvent(new Event('user-storage-updated'));
-    router.push({ name: 'dashboard' });
+        if (user.value === 'company') {
+            if (!companyName.value || !companyHRMail.value) {
+                message.value = 'Please provide company name and HR mail.';
+                return;
+            }
+            payload.companyName = companyName.value;
+            payload.companyHRMail = companyHRMail.value;
+        }
+
+        const response = props.registering ? await api.register(payload) : await api.login(payload);
+        localStorage.setItem('sessionId', response.sessionId || response.session?.sessionId || '');
+        localStorage.removeItem('userID');
+        localStorage.setItem('userType', response.user.role);
+        if (response.user.role === 'company' && response.profile) {
+            localStorage.setItem('companyName', response.profile.employer);
+            localStorage.setItem('companyHRMail', response.profile.hr_mail);
+        }
+        window.dispatchEvent(new Event('user-storage-updated'));
+        router.push({ name: 'dashboard' });
+    } catch (error) {
+        message.value = error.message || 'Something went wrong.';
+    }
 }
 </script>
 
@@ -81,7 +97,7 @@ const handleSubmit = function(){
                 <label for="hr-mail">HR Mail</label>
                 <input v-model="companyHRMail" id="hr-mail" type="email" />
             </div>
-            <div v-if="message" :class="['message',status===200?'success':'error']">
+            <div v-if="message" class="message error">
                 {{ message }}
             </div>
             <button v-on:click="" type="submit" id="submit">Submit</button>

@@ -5,78 +5,42 @@ import dp from '@/assets/dp-placeholder.png';
 import Companies from './Companies.vue';
 import Drives from './Drives.vue';
 import Students from './Students.vue';
+import { api } from '@/services/api';
 
-const validationResp = () => ({ status: 200 });
+const companies = ref([]);
+const students = ref([]);
+const drives = ref([]);
+const reports = ref({
+  totalStudents: 0,
+  totalCompanies: 0,
+  totalDrives: 0,
+  pendingCompanies: 0,
+  rejectedDrives: 0,
+  approvedDrives: 0,
+  placedStudents: 0,
+  blacklistedCompanies: 0,
+  blacklistedStudents: 0
+});
 
-const defaultUser = {
-  name: 'John Doe',
-  userType: 'Admin'
-};
-
-const companies = ref([
-  { employer: 'Google Inc.', website: 'www.google.com', hr_mail: 'gmail', status: 'active', blacklisted: false },
-  { employer: 'Apple Inc.', website: 'www.apple.com', hr_mail: 'apple_mail', status: 'requested', blacklisted: false },
-  { employer: 'Microsoft Inc.', website: 'www.microsoft.com', hr_mail: 'M_mail', status: 'active', blacklisted: false },
-  { employer: 'Skyroot', website: 'www.skyroot.com', hr_mail: 'sky_mail', status: 'denied', blacklisted: true }
-]);
-
-const students = ref([
-  { enrollment: 'ENR001', name: 'Aisha Patel', course: 'MBA', status: 'active', blacklisted: false },
-  { enrollment: 'ENR002', name: 'Rohan Singh', course: 'BTech', status: 'Placed', blacklisted: false },
-  { enrollment: 'ENR003', name: 'Maya Rao', course: 'BBA', status: 'active', blacklisted: true },
-  { enrollment: 'ENR004', name: 'Kabir Shah', course: 'MCA', status: 'active', blacklisted: false }
-]);
-
-const drives = ref([
-  {
-    driveId: 'DRV001',
-    companyName: 'Google Inc.',
-    startDate: '2026-09-01',
-    endDate: '2026-09-10',
-    studentsParticipating: 45,
-    status: 'Approved',
-    expanded: false
-  },
-  {
-    driveId: 'DRV002',
-    companyName: 'Microsoft Inc.',
-    startDate: '2026-10-05',
-    endDate: '2026-10-12',
-    studentsParticipating: 32,
-    status: 'Rejected',
-    expanded: false
-  },
-  {
-    driveId: 'DRV003',
-    companyName: 'Skyroot',
-    startDate: '2026-11-01',
-    endDate: '2026-11-08',
-    studentsParticipating: 12,
-    status: 'Approved',
-    expanded: false
-  }
-]);
-
-const user = ref({ ...defaultUser, ...validationResp() });
+const user = ref({ name: '', userType: 'Admin' });
 const selectedTab = ref('Companies');
 const searchQuery = ref('');
+
+const loadDashboard = async () => {
+  const payload = await api.getAdminDashboard();
+  user.value = payload.user || user.value;
+  companies.value = payload.companies || [];
+  students.value = payload.students || [];
+  drives.value = payload.drives || [];
+  reports.value = payload.reports || reports.value;
+};
 
 const componentTabs = { Companies, Drives, Students };
 const tabs = ['Companies', 'Drives', 'Students', 'Reports'];
 
 const currentTabComponent = computed(() => componentTabs[selectedTab.value] || null);
 
-const reportStats = computed(() => ({
-  totalStudents: students.value.length,
-  totalCompanies: companies.value.length,
-  totalDrives: drives.value.length,
-  pendingCompanies: companies.value.filter((c) => c.status === 'requested').length,
-  rejectedDrives: drives.value.filter((d) => d.status === 'Rejected').length,
-  approvedDrives: drives.value.filter((d) => d.status === 'Approved').length,
-  placedStudents: students.value.filter((s) => s.status.toLowerCase() === 'placed').length,
-  blacklistedCompanies: companies.value.filter((c) => c.blacklisted).length,
-  blacklistedStudents: students.value.filter((s) => s.blacklisted).length
-}));
+const reportStats = computed(() => reports.value);
 
 const searchPlaceholder = computed(() => {
   if (selectedTab.value === 'Students') return 'Search students by name or enrollment…';
@@ -86,13 +50,44 @@ const searchPlaceholder = computed(() => {
 });
 
 onMounted(() => {
-  if (validationResp().status !== 200) router.push({ name: 'home' });
+  loadDashboard().catch((err) => {logout(),router.push({ name: 'home' })});
 });
+
+const handleCompanyUpdated = async ({ companyName, payload }) => {
+  await api.updateCompany(companyName, payload);
+  await loadDashboard();
+};
+
+const handleStudentUpdated = async ({ enrollment, payload }) => {
+  await api.updateStudent(enrollment, payload);
+  await loadDashboard();
+};
+
+const handleDriveUpdated = async ({ driveId, payload }) => {
+  await api.updateDrive(driveId, payload);
+  await loadDashboard();
+};
+
+const logout = async () => {
+  try {
+    await api.logout();
+  } finally {
+    localStorage.removeItem('sessionId');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('companyName');
+    localStorage.removeItem('companyHRMail');
+    await router.push({ name: 'home' });
+    window.location.reload();
+  }
+};
 </script>
 
 <template>
   <div class="admin-dashboard">
-    <div class="dash-head"><h1>Admin</h1></div>
+    <div class="dash-head">
+      <h1>Admin</h1>
+      <button class="logout-button" @click="logout">Logout</button>
+    </div>
     <hr>
     <div class="admin-info">
       <img :src="dp" alt="dp" id="profile-pic" />
@@ -141,7 +136,12 @@ onMounted(() => {
           v-if="currentTabComponent"
           :is="currentTabComponent"
           :searchQuery="searchQuery"
+          :companies="companies"
+          :drives="drives"
           :students="students"
+          @company-updated="handleCompanyUpdated"
+          @student-updated="handleStudentUpdated"
+          @drive-updated="handleDriveUpdated"
         />
         <div v-else class="reports-panel">
           <h2>Placement Reports</h2>
@@ -176,7 +176,9 @@ onMounted(() => {
 <style scoped>
   .dash-head {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
   }
 
   .admin-info {
@@ -206,6 +208,19 @@ onMounted(() => {
 
   h1 {
     font-size: 3em;
+  }
+
+  .logout-button {
+    border: none;
+    background: #d32f2f;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .logout-button:hover {
+    background: #a12722;
   }
 
   hr {

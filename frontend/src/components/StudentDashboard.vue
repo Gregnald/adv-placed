@@ -1,20 +1,22 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import router from '@/router';
 import dp from '@/assets/dp-placeholder.png';
 import StudentDrives from './StudentDrives.vue';
 import StudentApplied from './StudentApplied.vue';
+import { api } from '@/services/api';
 
 const profile = ref({
-  name: 'Ananya Sharma',
-  course: 'B.Tech Computer Science',
-  year: '3rd Year',
+  name: '',
+  course: '',
+  year: '',
   userType: 'Student',
   status: 'Active',
-  resumeFileName: 'ananya-sharma-resume.pdf'
+  resumeFileName: ''
 });
 
 const selectedResume = ref({
-  fileName: profile.value.resumeFileName,
+  fileName: '',
   file: null
 });
 
@@ -26,101 +28,7 @@ const tabs = {
   Applied: StudentApplied
 };
 
-const allDrives = ref([
-  {
-    driveId: 'DRV101',
-    companyName: 'Google Inc.',
-    startDate: '2026-09-10',
-    endDate: '2026-09-14',
-    studentsParticipating: 48,
-    status: 'Approved',
-    applied: false,
-    expanded: false,
-    accepted: true,
-    applicationStatus: 'Applied',
-    applicationDeadline: '2026-09-05',
-    minCgpa: 7.5,
-    eligibleBranches: ['CSE', 'IT'],
-    eligibleYears: ['3rd Year', '4th Year'],
-    jdInfo: {
-      jobTitle: 'Software Engineer Intern',
-      jobDescription: 'Build scalable systems and contribute to product development.',
-      jobCompensation: 'Stipend with relocation support.',
-      companyWebsite: 'www.google.com',
-      hrMail: 'recruiting@google.com'
-    }
-  },
-  {
-    driveId: 'DRV102',
-    companyName: 'Microsoft Inc.',
-    startDate: '2026-09-25',
-    endDate: '2026-09-28',
-    studentsParticipating: 38,
-    status: 'Approved',
-    applied: false,
-    expanded: false,
-    accepted: false,
-    applicationStatus: 'Pending',
-    applicationDeadline: '2026-09-20',
-    minCgpa: 7.0,
-    eligibleBranches: ['CSE', 'ECE'],
-    eligibleYears: ['3rd Year', '4th Year'],
-    jdInfo: {
-      jobTitle: 'Cloud Solutions Associate',
-      jobDescription: 'Support Azure deployment and collaboration with engineering teams.',
-      jobCompensation: 'Competitive stipend and benefits.',
-      companyWebsite: 'www.microsoft.com',
-      hrMail: 'careers@microsoft.com'
-    }
-  },
-  {
-    driveId: 'DRV103',
-    companyName: 'Skyroot',
-    startDate: '2026-08-05',
-    endDate: '2026-08-07',
-    studentsParticipating: 16,
-    status: 'Approved',
-    applied: true,
-    appliedResume: 'ananya-sharma-resume.pdf',
-    expanded: false,
-    accepted: true,
-    applicationStatus: 'Selected',
-    applicationDeadline: '2026-08-01',
-    minCgpa: 8.0,
-    eligibleBranches: ['Aerospace', 'Mechanical'],
-    eligibleYears: ['3rd Year'],
-    jdInfo: {
-      jobTitle: 'Aerospace Systems Intern',
-      jobDescription: 'Support launch vehicle development and validation.',
-      jobCompensation: 'Stipend plus travel reimbursement.',
-      companyWebsite: 'www.skyroot.com',
-      hrMail: 'jobs@skyroot.com'
-    }
-  },
-  {
-    driveId: 'DRV104',
-    companyName: 'ByteWave',
-    startDate: '2026-07-01',
-    endDate: '2026-07-03',
-    studentsParticipating: 22,
-    status: 'Rejected',
-    applied: false,
-    expanded: false,
-    accepted: false,
-    applicationStatus: 'Rejected',
-    applicationDeadline: '2026-06-25',
-    minCgpa: 6.5,
-    eligibleBranches: ['CSE', 'ECE', 'IT'],
-    eligibleYears: ['3rd Year', '4th Year'],
-    jdInfo: {
-      jobTitle: 'Frontend Developer Intern',
-      jobDescription: 'Work on user-facing web applications and UI features.',
-      jobCompensation: 'Monthly stipend with learning allowance.',
-      companyWebsite: 'www.bytewave.com',
-      hrMail: 'talent@bytewave.com'
-    }
-  }
-]);
+const allDrives = ref([]);
 
 const today = new Date();
 
@@ -136,6 +44,19 @@ const activeDrives = computed(() =>
 const appliedDrives = computed(() =>
   allDrives.value.filter((drive) => drive.applied)
 );
+
+const loadDashboard = async () => {
+  const payload = await api.getStudentDashboard();
+  profile.value = { ...profile.value, ...(payload.profile || {}) };
+  selectedResume.value.fileName = profile.value.resumeFileName;
+  allDrives.value = (payload.activeDrives || []).map((drive) => ({ ...drive, expanded: false }));
+  const applied = payload.appliedDrives || [];
+  const appliedMap = new Map(applied.map((drive) => [drive.driveId, drive]));
+  allDrives.value = allDrives.value.map((drive) => ({
+    ...drive,
+    ...(appliedMap.get(drive.driveId) || {})
+  }));
+};
 
 function getDriveVisibility(drive) {
   const start = new Date(drive.startDate);
@@ -162,32 +83,58 @@ const handleResumeUpload = (event) => {
   }
 };
 
-const applyToDrive = (driveId) => {
-  allDrives.value = allDrives.value.map((drive) => {
-    if (drive.driveId === driveId && profile.value.resumeFileName) {
-      return {
-        ...drive,
-        applied: true,
-        appliedResume: profile.value.resumeFileName,
-        applicationStatus: 'Pending'
-      };
-    }
-    return drive;
+const applyToDrive = async (driveId) => {
+  if (!profile.value.resumeFileName) return;
+  await api.applyToDrive(driveId, {
+    resumeFileName: profile.value.resumeFileName
   });
+  await loadDashboard();
 };
 
-const saveProfile = () => {
+const saveProfile = async () => {
+  await api.updateStudentProfile({
+    name: profile.value.name,
+    course: profile.value.course,
+    year: profile.value.year,
+    status: profile.value.status,
+    resumeFileName: profile.value.resumeFileName
+  });
   editingProfile.value = false;
 };
 
-const toggleStatus = () => {
+const toggleStatus = async () => {
   profile.value.status = profile.value.status === 'Active' ? 'Inactive' : 'Active';
+  await api.updateStudentProfile({
+    status: profile.value.status
+  });
 };
+
+const logout = async () => {
+  try {
+    await api.logout();
+  } finally {
+    localStorage.removeItem('sessionId');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('companyName');
+    localStorage.removeItem('companyHRMail');
+    await router.push({ name: 'home' });
+    window.location.reload();
+  }
+};
+
+onMounted(() => {
+  loadDashboard().catch(() => {
+    allDrives.value = [];
+  });
+});
 </script>
 
 <template>
   <div class="student-dashboard">
-    <div class="dash-head"><h1>Student</h1></div>
+    <div class="dash-head">
+      <h1>Student</h1>
+      <button class="logout-button" @click="logout">Logout</button>
+    </div>
     <hr />
 
     <div class="student-info">
@@ -262,11 +209,26 @@ const toggleStatus = () => {
 
 .dash-head {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
 }
 
 h1 {
   font-size: 3em;
+}
+
+.logout-button {
+  border: none;
+  background: #d32f2f;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background: #a12722;
 }
 
 .data-container {
