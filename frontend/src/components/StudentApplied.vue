@@ -38,51 +38,55 @@ const statusClass = (drive) => {
 </script>
 
 <template>
-  <table class="drives">
-    <thead>
-      <tr class="table-head">
-        <th>Drive ID</th>
-        <th>Company Name</th>
-        <th>Start Date</th>
-        <th>End Date</th>
-        <th>Students Participating</th>
-        <th>Application Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <template v-for="drive in drives" :key="drive.driveId">
-        <tr class="table-entries" @click="toggleExpand(drive.driveId)">
-          <td>{{ drive.driveId }}</td>
-          <td>{{ drive.companyName }}</td>
-          <td>{{ drive.startDate }}</td>
-          <td>{{ drive.endDate }}</td>
-          <td>{{ drive.studentsParticipating }}</td>
-          <td :class="statusClass(drive)">{{ getStatus(drive) }}</td>
+  <div class="applied-list">
+    <table class="drives">
+      <thead>
+        <tr class="table-head">
+          <th>Drive ID</th>
+          <th>Company</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Application Status</th>
         </tr>
-        <tr v-if="isExpanded(drive.driveId)" class="details-row">
-          <td colspan="6" class="details-cell">
-            <div class="details-grid">
-              <div class="detail-group">
-                <h4>Drive Overview</h4>
-                <p><strong>Company:</strong> {{ drive.companyName }}</p>
-                <p><strong>Start Date:</strong> {{ drive.startDate }}</p>
-                <p><strong>End Date:</strong> {{ drive.endDate }}</p>
-                <p><strong>Interview Stage:</strong> {{ getStatus(drive) }}</p>
+      </thead>
+      <tbody>
+        <template v-for="drive in drives" :key="drive.driveId">
+          <tr class="table-entries" @click="toggleExpand(drive.driveId)">
+            <td>{{ drive.driveId }}</td>
+            <td>{{ drive.companyName }}</td>
+            <td>{{ drive.startDate }}</td>
+            <td>{{ drive.endDate }}</td>
+            <td :class="statusClass(drive)">{{ getStatus(drive) }}</td>
+          </tr>
+          <tr v-if="isExpanded(drive.driveId)" class="details-row">
+            <td colspan="5" class="details-cell">
+              <div class="details-grid">
+                <div class="detail-group">
+                  <h4>Drive Overview</h4>
+                  <p><strong>Company:</strong> {{ drive.companyName }}</p>
+                  <p><strong>Start Date:</strong> {{ drive.startDate }}</p>
+                  <p><strong>End Date:</strong> {{ drive.endDate }}</p>
+                  <p><strong>Application Status:</strong> {{ getStatus(drive) }}</p>
+                  <p><strong>Deadline:</strong> {{ drive.applicationDeadline || 'N/A' }}</p>
+                  <p><strong>Min CGPA:</strong> {{ drive.minCgpa || 'N/A' }}</p>
+                </div>
+                <div class="detail-group">
+                  <h4>Job Description</h4>
+                  <p><strong>Title:</strong> {{ drive.jdInfo.jobTitle }}</p>
+                  <p><strong>Description:</strong> {{ drive.jdInfo.jobDescription }}</p>
+                  <p><strong>Compensation:</strong> {{ drive.jdInfo.jobCompensation }}</p>
+                  <p><strong>Website:</strong> {{ drive.jdInfo.companyWebsite }}</p>
+                  <p><strong>HR Email:</strong> {{ drive.jdInfo.hrMail }}</p>
+                  <p v-if="drive.appliedResume"><strong>Resume:</strong> {{ drive.appliedResume }}</p>
+                </div>
               </div>
-              <div class="detail-group">
-                <h4>Job Description</h4>
-                <p><strong>Title:</strong> {{ drive.jdInfo.jobTitle }}</p>
-                <p><strong>Description:</strong> {{ drive.jdInfo.jobDescription }}</p>
-                <p><strong>Compensation:</strong> {{ drive.jdInfo.jobCompensation }}</p>
-                <p><strong>Website:</strong> {{ drive.jdInfo.companyWebsite }}</p>
-                <p><strong>HR Email:</strong> {{ drive.jdInfo.hrMail }}</p>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </template>
-    </tbody>
-  </table>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+    <div v-if="!drives.length" class="empty-state">You have not applied to any drives yet.</div>
+  </div>
 </template>
 
 <style scoped>
@@ -136,18 +140,25 @@ const statusClass = (drive) => {
   margin: 6px 0;
   word-break: break-word;
 }
-  .status-accepted {
-    color: #1f8a21;
-    font-weight: 700;
-  }
 
-  .status-rejected {
-    color: #d32f2f;
-    font-weight: 700;
-  }
+.status-accepted {
+  color: #1f8a21;
+  font-weight: 700;
+}
 
-  .status-pending {
-    color: #1f5ec4;
-    font-weight: 700;
-  }
+.status-rejected {
+  color: #d32f2f;
+  font-weight: 700;
+}
+
+.status-pending {
+  color: #1f5ec4;
+  font-weight: 700;
+}
+
+.empty-state {
+  margin-top: 16px;
+  text-align: center;
+  color: #666;
+}
 </style>

@@ -1,6 +1,5 @@
 <script setup>
-import {ref,computed,watch,defineProps,onMounted} from 'vue';
-import JD from '@/components/JD.vue'
+import {ref,computed,defineProps,onMounted} from 'vue';
 import router from '@/router';
 
 onMounted(() => {
@@ -16,36 +15,42 @@ const props = defineProps({
     }
 });
 
-const showJD = ref(false);
 const user = ref('student');
 const username = ref('');
 const password = ref('');
 const message = ref('');
 const status = ref();
-const jobRef = ref(null);
+const companyName = ref('');
+const companyHRMail = ref('');
 
 const changeUser = (newUser) => {
     user.value = newUser;
 };
 
-const linkJD = computed(function(){
-    console.log(user.value=="company" && props.registering);
-    return user.value=="company" && props.registering;
-})
-
-watch(linkJD, (newValue) => {
-    showJD.value = newValue;
-})
 
 const handleSubmit = function(){
-    if(props.registering && user.value=='admin'){
-        message.value="Can't sign-up as Admin";
-        console.log(message);
+    if(props.registering && user.value === 'admin'){
+        message.value = "Can't sign-up as Admin";
         return;
     }
-    console.log(`registering = ${props.registering} user = ${user.value}`)
-    console.log(`Username: ${username.value} Password: ${password.value}`)
-    console.log(props.registering);
+    if (!username.value || !password.value) {
+        message.value = 'Please enter username and password.';
+        return;
+    }
+
+    if (props.registering && user.value === 'company') {
+        if (!companyName.value || !companyHRMail.value) {
+            message.value = 'Please provide company name and HR mail.';
+            return;
+        }
+        localStorage.setItem('companyName', companyName.value);
+        localStorage.setItem('companyHRMail', companyHRMail.value);
+    }
+
+    localStorage.setItem('userID', username.value);
+    localStorage.setItem('userType', user.value);
+    window.dispatchEvent(new Event('user-storage-updated'));
+    router.push({ name: 'dashboard' });
 }
 </script>
 
@@ -68,13 +73,17 @@ const handleSubmit = function(){
                 <label for="password">Password</label>
                 <input v-model="password" id="password" type="password">
             </div>
+            <div v-if="registering && user === 'company'" class="form-row">
+                <label for="company-name">Company Name</label>
+                <input v-model="companyName" id="company-name" type="text" />
+            </div>
+            <div v-if="registering && user === 'company'" class="form-row">
+                <label for="hr-mail">HR Mail</label>
+                <input v-model="companyHRMail" id="hr-mail" type="email" />
+            </div>
             <div v-if="message" :class="['message',status===200?'success':'error']">
                 {{ message }}
             </div>
-            <label v-if="linkJD" class="jd-checkbox">
-                <input v-model="showJD" type="checkbox" />I want to add JD
-            </label>
-            <JD v-if="linkJD && showJD" :showJD="true" ref="jobRef"/>
             <button v-on:click="" type="submit" id="submit">Submit</button>
         </form>
     </div>

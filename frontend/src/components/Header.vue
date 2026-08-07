@@ -1,7 +1,16 @@
 <script setup>
-    import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 
-    const userID = ref(localStorage.getItem("userID"));
+const userID = ref(localStorage.getItem('userID'));
+
+const updateUserID = () => {
+  userID.value = localStorage.getItem('userID');
+};
+
+onMounted(() => {
+  window.addEventListener('user-storage-updated', updateUserID);
+});
 </script>
 <template>
     <header>

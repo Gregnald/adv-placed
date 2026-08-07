@@ -25,6 +25,10 @@ const toggleExpand = (driveId) => {
 };
 
 const isExpanded = (driveId) => expandedIds.value.has(driveId);
+
+const canApply = (drive) => drive.visibility === 'Active' && !drive.applied && props.resumeFileName;
+
+const statusText = (drive) => drive.visibility || drive.status;
 </script>
 
 <template>
@@ -56,10 +60,10 @@ const isExpanded = (driveId) => expandedIds.value.has(driveId);
           <td>
             <button
               class="apply-button"
-              :disabled="drive.applied || !resumeFileName || drive.visibility !== 'Active'"
+              :disabled="drive.applied || !canApply(drive)"
               @click.stop="emit('apply', drive.driveId)"
             >
-              {{ drive.applied ? 'Applied' : drive.visibility !== 'Active' ? 'Unavailable' : resumeFileName ? 'Apply' : 'Upload Resume' }}
+              {{ drive.applied ? 'Applied' : !props.resumeFileName ? 'Upload Resume' : statusText(drive) !== 'Active' ? 'Unavailable' : 'Apply' }}
             </button>
             <p v-if="drive.applied && drive.appliedResume" class="resume-note">Resume: {{ drive.appliedResume }}</p>
           </td>
@@ -72,7 +76,10 @@ const isExpanded = (driveId) => expandedIds.value.has(driveId);
                 <p><strong>Company:</strong> {{ drive.companyName }}</p>
                 <p><strong>Start Date:</strong> {{ drive.startDate }}</p>
                 <p><strong>End Date:</strong> {{ drive.endDate }}</p>
-                <p><strong>Students Participating:</strong> {{ drive.studentsParticipating }}</p>
+                <p><strong>Application Deadline:</strong> {{ drive.applicationDeadline || 'N/A' }}</p>
+                <p><strong>Minimum CGPA:</strong> {{ drive.minCgpa || 'N/A' }}</p>
+                <p><strong>Eligible Branches:</strong> {{ drive.eligibleBranches?.join(', ') || 'All' }}</p>
+                <p><strong>Eligible Years:</strong> {{ drive.eligibleYears?.join(', ') || 'All' }}</p>
               </div>
               <div class="detail-group">
                 <h4>Job Description</h4>

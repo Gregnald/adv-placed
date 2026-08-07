@@ -1,22 +1,25 @@
 <script setup>
-    import { ref,onMounted } from 'vue';
-    import router from '@/router';
-    import AdminDashboard from '@/components/AdminDashboard.vue';
-    import StudentDashboard from '@/components/StudentDashboard.vue';
+import { ref, onMounted } from 'vue';
+import router from '@/router';
+import AdminDashboard from '@/components/AdminDashboard.vue';
+import CompanyDashboard from '@/components/CompanyDashboard.vue';
+import StudentDashboard from '@/components/StudentDashboard.vue';
 
-    onMounted(() => {
-        const userID = ref(localStorage.getItem("userID"));
-        if(!userID.value)router.push({name:'home'})
-    });
+// const userType = ref(localStorage.getItem('userType') || 'admin');
+const userType = ref('company')
 
-    const userType = ref('admin');
+onMounted(() => {
+  const userID = localStorage.getItem('userID');
+  if (!userID) router.push({ name: 'home' });
+});
 </script>
 
 <template>
-    <div class="dashboard-container">
-        <AdminDashboard v-if="userType=='admin'"/>
-        <StudentDashboard v-if="userType=='student'"/>
-    </div>
+  <div class="dashboard-container">
+    <AdminDashboard v-if="userType === 'admin'" />
+    <CompanyDashboard v-if="userType === 'company'" />
+    <StudentDashboard v-if="userType === 'student'" />
+  </div>
 </template>
 
 <style scoped>
