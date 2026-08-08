@@ -1,12 +1,13 @@
-import { createRouter,createWebHistory } from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "@/views/HomeView.vue";
 import LoginView from "@/views/LoginView.vue";
 import SignupView from "@/views/SignupView.vue";
 import DashboardView from "@/views/DashboardView.vue";
+import NotFoundView from "@/views/404View.vue";
 
 export default createRouter({
-    history:createWebHistory(import.meta.env.BASE_URL),
-    routes:[
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes: [
         {
             path: '/',
             name: 'home',
@@ -27,5 +28,10 @@ export default createRouter({
             name: 'dashboard',
             component: DashboardView,
         },
-],
+        {
+            path: '/:pathMatch(.*)*',
+            name: 'not-found',
+            component: NotFoundView,
+        },
+    ],
 });

@@ -18,9 +18,13 @@ const selectedDriveId = ref(null);
 
 const applications = ref([]);
 
+const isBlacklisted = ref(false);
+
 const loadDashboard = async () => {
   const payload = await api.getCompanyDashboard();
   company.value = payload.company || company.value;
+  isBlacklisted.value = company.value.blacklisted || false;
+  if (isBlacklisted.value) return;
   drives.value = payload.drives || [];
   applications.value = payload.applications || [];
   if (company.value.employer) {
@@ -107,7 +111,14 @@ onMounted(() => {
     </div>
     <hr />
 
-    <div class="company-info">
+    <div v-if="isBlacklisted" class="blacklist-message">
+      <div class="blacklist-container">
+        <h2>⛔ Access Denied</h2>
+        <p>You are blacklisted. Kindly contact the institution for more information.</p>
+      </div>
+    </div>
+
+    <div v-if="!isBlacklisted" class="company-info">
       <div>
         <h2>{{ company.employer }}</h2>
         <p class="company-status">{{ company.status }}</p>
@@ -119,7 +130,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="summary-row">
+    <div v-if="!isBlacklisted" class="summary-row">
       <div class="summary-card">
         <h3>Total Drives</h3>
         <p>{{ summaryStats.totalDrives }}</p>
@@ -138,7 +149,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="data-container">
+    <div v-if="!isBlacklisted" class="data-container">
       
 
       <div v-if="showCreateForm" class="create-panel">
@@ -381,5 +392,36 @@ h1 {
 .applications-table button {
   margin-right: 8px;
   margin-bottom: 4px;
+}
+
+.blacklist-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  background: linear-gradient(135deg, #f5f5f5 0%, #efefef 100%);
+  border-radius: 10px;
+  margin: 2vh;
+}
+
+.blacklist-container {
+  text-align: center;
+  padding: 40px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+}
+
+.blacklist-container h2 {
+  color: #d32f2f;
+  font-size: 2em;
+  margin: 0 0 16px 0;
+}
+
+.blacklist-container p {
+  color: #666;
+  font-size: 1.1em;
+  margin: 0;
 }
 </style>

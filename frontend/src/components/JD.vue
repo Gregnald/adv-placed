@@ -1,8 +1,9 @@
 <script setup>
-import { ref,defineProps, onMounted } from 'vue';
+import { ref, defineProps, onMounted } from 'vue';
+import { api } from '@/services/api';
 
 const props = defineProps({
-    showJD:{
+    showJD: {
         type: Boolean,
         default: false
     }
@@ -21,7 +22,7 @@ const eligibleYears = ref('');
 const startDate = ref('');
 const endDate = ref('');
 
-function getJobData(){
+function getJobData() {
     return {
         jobTitle: jobTitle.value,
         jobDescription: jobDescription.value,
@@ -42,11 +43,20 @@ defineExpose({
     getJobData
 });
 
-onMounted(() => {
+onMounted(async () => {
     const storedName = localStorage.getItem('companyName');
     const storedHR = localStorage.getItem('companyHRMail');
     if (storedName) companyName.value = storedName;
     if (storedHR) hrMail.value = storedHR;
+
+    try {
+        const dashboard = await api.getCompanyDashboard();
+        if (dashboard.company && dashboard.company.website) {
+            companyWebsite.value = dashboard.company.website;
+        }
+    } catch (error) {
+        console.error('Failed to load company website:', error);
+    }
 });
 
 </script>
@@ -95,7 +105,7 @@ onMounted(() => {
         </div>
         <div class="form-row">
             <label for="company-website">Company Website</label>
-            <input required id="company-website" v-model="companyWebsite" placeholder="Enter company's website" />
+            <input required id="company-website" v-model="companyWebsite" placeholder="Enter company's website" readonly />
         </div>
         <div class="form-row">
             <label for="hr-mail">HR Mail</label>

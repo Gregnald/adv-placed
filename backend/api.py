@@ -335,6 +335,7 @@ def register_routes(app):
             company.blacklisted = bool(data['blacklisted'])
             if company.blacklisted:
                 company.status = 'denied'
+            
 
         db.session.commit()
         return response({'company': company_to_dict(company)})

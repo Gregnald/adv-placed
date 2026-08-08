@@ -111,12 +111,14 @@ def drive_for_student(drive, application=None):
     today = date.today()
     start = datetime.fromisoformat(f'{drive.start_date}T00:00:00').date()
     end = datetime.fromisoformat(f'{drive.end_date}T00:00:00').date()
+    
+    # Compare just the date parts, treating start and end dates as inclusive
     if end < today:
         visibility = 'Past'
-    elif start > today:
-        visibility = 'Upcoming'
-    else:
+    elif start <= today <= end:
         visibility = 'Active'
+    else:
+        visibility = 'Upcoming'
 
     payload = drive_to_dict(drive)
     payload['visibility'] = visibility

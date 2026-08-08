@@ -22,6 +22,7 @@ const password = ref('');
 const message = ref('');
 const companyName = ref('');
 const companyHRMail = ref('');
+const companyWebsite = ref('');
 
 const changeUser = (newUser) => {
     user.value = newUser;
@@ -45,13 +46,14 @@ const handleSubmit = async function(){
             role: user.value
         };
 
-        if (user.value === 'company') {
-            if (!companyName.value || !companyHRMail.value) {
-                message.value = 'Please provide company name and HR mail.';
+        if (props.registering && user.value === 'company') {
+            if (!companyName.value) {
+                message.value = 'Please provide a company name.';
                 return;
             }
             payload.companyName = companyName.value;
             payload.companyHRMail = companyHRMail.value;
+            payload.website = companyWebsite.value;
         }
 
         const response = props.registering ? await api.register(payload) : await api.login(payload);
@@ -96,6 +98,10 @@ const handleSubmit = async function(){
             <div v-if="registering && user === 'company'" class="form-row">
                 <label for="hr-mail">HR Mail</label>
                 <input v-model="companyHRMail" id="hr-mail" type="email" />
+            </div>
+            <div v-if="registering && user === 'company'" class="form-row">
+                <label for="company-website">Website</label>
+                <input v-model="companyWebsite" id="company-website" type="url" placeholder="https://example.com" />
             </div>
             <div v-if="message" class="message error">
                 {{ message }}

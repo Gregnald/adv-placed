@@ -41,24 +41,27 @@ const filteredStudents = computed(() => {
 const isStatusChangeable = (status) => false;
 
 const changeBlacklisted = (enrollment) => {
-    const student = localStudents.value.find((s) => s.enrollment === enrollment);
-    if (!student) {
-        return;
+    const student = localStudents.value.find(
+        (student) => student.enrollment === enrollment
+    );
+
+    if (!student) return;
+
+    student.blacklisted = !student.blacklisted;
+
+    if (student.blacklisted) {
+        student.status = 'denied';
+    } else {
+        student.status = 'active';
     }
 
-    const newBlacklisted = !student.blacklisted;
-    student.blacklisted = newBlacklisted;
-
-    if (newBlacklisted) {
-        if (student.status !== 'denied') {
-            student.previousStatus = student.status;
-            student.status = 'denied';
+    emit('student-updated', {
+        enrollment: student.enrollment,
+        payload: {
+            blacklisted: student.blacklisted,
+            status: student.status
         }
-    } else if (student.previousStatus) {
-        student.status = student.previousStatus;
-        delete student.previousStatus;
-    }
-    emit('student-updated', { enrollment: student.enrollment, payload: { blacklisted: student.blacklisted, status: student.status } });
+    });
 };
 
 const changeStatus = (enrollment) => {

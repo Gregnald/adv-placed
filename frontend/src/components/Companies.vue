@@ -51,24 +51,27 @@ const filteredCompanies = computed(() => {
 });
 
 const changeBlacklisted = (companyName) => {
-        const company = localCompanies.value.find((company) => company.employer === companyName);
-    if (!company) {
-        return;
+    const company = localCompanies.value.find(
+        (company) => company.employer === companyName
+    );
+
+    if (!company) return;
+
+    company.blacklisted = !company.blacklisted;
+
+    if (company.blacklisted) {
+        company.status = 'denied';
+    } else {
+        company.status = 'active';
     }
 
-    const newBlacklisted = !company.blacklisted;
-    company.blacklisted = newBlacklisted;
-
-    if (newBlacklisted) {
-        if (company.status !== 'denied') {
-            company.previousStatus = company.status;
-            company.status = 'denied';
+    emit('company-updated', {
+        companyName: company.employer,
+        payload: {
+            blacklisted: company.blacklisted,
+            status: company.status
         }
-    } else if (company.previousStatus) {
-        company.status = company.previousStatus;
-        delete company.previousStatus;
-    }
-    emit('company-updated', { companyName: company.employer, payload: { blacklisted: company.blacklisted, status: company.status } });
+    });
 };
 
 const changeStatus = (companyName, newStatus) => {

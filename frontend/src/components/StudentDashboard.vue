@@ -22,6 +22,7 @@ const selectedResume = ref({
 
 const editingProfile = ref(false);
 const selectedTab = ref('Drives');
+const isBlacklisted = ref(false);
 
 const tabs = {
   Drives: StudentDrives,
@@ -30,7 +31,13 @@ const tabs = {
 
 const allDrives = ref([]);
 
-const today = new Date();
+const getToday = () => {
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return t;
+};
+
+const today = getToday();
 
 const activeDrives = computed(() =>
   allDrives.value
@@ -48,6 +55,8 @@ const appliedDrives = computed(() =>
 const loadDashboard = async () => {
   const payload = await api.getStudentDashboard();
   profile.value = { ...profile.value, ...(payload.profile || {}) };
+  isBlacklisted.value = profile.value.blacklisted || false;
+  if (isBlacklisted.value) return;
   selectedResume.value.fileName = profile.value.resumeFileName;
   allDrives.value = (payload.activeDrives || []).map((drive) => ({ ...drive, expanded: false }));
   const applied = payload.appliedDrives || [];
@@ -61,6 +70,8 @@ const loadDashboard = async () => {
 function getDriveVisibility(drive) {
   const start = new Date(drive.startDate);
   const end = new Date(drive.endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
   if (end < today) return 'Past';
   if (start > today) return 'Upcoming';
   return 'Active';
@@ -137,7 +148,14 @@ onMounted(() => {
     </div>
     <hr />
 
-    <div class="student-info">
+    <div v-if="isBlacklisted" class="blacklist-message">
+      <div class="blacklist-container">
+        <h2>⛔ Access Denied</h2>
+        <p>You are blacklisted. Kindly contact the institution for more information.</p>
+      </div>
+    </div>
+
+    <div v-if="!isBlacklisted" class="student-info">
       <img :src="dp" alt="profile" id="profile-pic" />
       <div class="profile-details">
         <div class="profile-row">
@@ -173,7 +191,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="data-container">
+    <div v-if="!isBlacklisted" class="data-container">
       <hr />
       <nav class="data-nav">
         <button
@@ -229,6 +247,37 @@ h1 {
 
 .logout-button:hover {
   background: #a12722;
+}
+
+.blacklist-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  background: linear-gradient(135deg, #f5f5f5 0%, #efefef 100%);
+  border-radius: 10px;
+  margin: 2vh;
+}
+
+.blacklist-container {
+  text-align: center;
+  padding: 40px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+}
+
+.blacklist-container h2 {
+  color: #d32f2f;
+  font-size: 2em;
+  margin: 0 0 16px 0;
+}
+
+.blacklist-container p {
+  color: #666;
+  font-size: 1.1em;
+  margin: 0;
 }
 
 .data-container {
