@@ -80,6 +80,46 @@ const logout = async () => {
     window.location.reload();
   }
 };
+const placementRate = computed(() => {
+  const total = reports.value.totalStudents || 0;
+  if (!total) return '0.0%';
+  return (((reports.value.placedStudents || 0) / total) * 100).toFixed(1) + '%';
+});
+
+const companyApprovalRate = computed(() => {
+  const total = reports.value.totalCompanies || 0;
+  if (!total) return '0.0%';
+  const approved = reports.value.approvedCompanies || 0;
+  return ((approved / total) * 100).toFixed(1) + '%';
+});
+
+const driveApprovalRate = computed(() => {
+  const total = reports.value.totalDrives || 0;
+  if (!total) return '0.0%';
+  const approved = reports.value.approvedDrives || 0;
+  return ((approved / total) * 100).toFixed(1) + '%';
+});
+
+const exporting = ref(false);
+
+const exportCurrentTab = async () => {
+
+  exporting.value = true;
+
+  try {
+    let entity = 'admin_companies';
+    if (selectedTab.value === 'Companies') entity = 'admin_companies';
+    else if (selectedTab.value === 'Drives') entity = 'admin_drives';
+    else if (selectedTab.value === 'Students') entity = 'admin_students';
+    else if (selectedTab.value === 'Reports') entity = 'admin_reports';
+
+    await api.exportAndDownload(entity, '', `${entity}.csv`);
+  } catch (err) {
+    alert('Failed to export CSV: ' + err.message);
+  } finally {
+    exporting.value = false;
+  }
+};
 </script>
 
 <template>
@@ -128,9 +168,15 @@ const logout = async () => {
         </button>
       </nav>
       <hr />
-      <div class="admin-search" v-if="selectedTab !== 'Reports'">
-        <input v-model="searchQuery" :placeholder="searchPlaceholder" />
+      <div class="action-bar">
+        <div class="admin-search" v-if="selectedTab !== 'Reports'">
+          <input v-model="searchQuery" :placeholder="searchPlaceholder" />
+        </div>
+        <button class="export-btn" :disabled="exporting" @click="exportCurrentTab">
+          {{ exporting ? 'Exporting...' : 'Export CSV' }}
+        </button>
       </div>
+
       <div class="tab-container">
         <component
           v-if="currentTabComponent"
@@ -146,6 +192,10 @@ const logout = async () => {
         <div v-else class="reports-panel">
           <h2>Placement Reports</h2>
           <div class="reports-grid">
+            <div class="report-card">
+              <h4>Placement Rate</h4>
+              <p>{{ placementRate }}</p>
+            </div>
             <div class="report-card">
               <h4>Approved Drives</h4>
               <p>{{ reportStats.approvedDrives }}</p>
@@ -167,11 +217,51 @@ const logout = async () => {
               <p>{{ reportStats.blacklistedStudents }}</p>
             </div>
           </div>
+
+          <div class="summary-table-section">
+            <h3>Detailed Breakdown</h3>
+            <table class="reports-table">
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th>Total</th>
+                  <th>Approved / Placed</th>
+                  <th>Pending / Unplaced</th>
+                  <th>Blacklisted / Rejected</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Students</td>
+                  <td>{{ reports.totalStudents }}</td>
+                  <td>{{ reports.placedStudents }}</td>
+                  <td>{{ reports.unplacedStudents || 0 }}</td>
+                  <td>{{ reports.blacklistedStudents }}</td>
+                </tr>
+                <tr>
+                  <td>Companies</td>
+                  <td>{{ reports.totalCompanies }}</td>
+                  <td>{{ reports.approvedCompanies || 0 }}</td>
+                  <td>{{ reports.pendingCompanies }}</td>
+                  <td>{{ reports.blacklistedCompanies }}</td>
+                </tr>
+                <tr>
+                  <td>Drives</td>
+                  <td>{{ reports.totalDrives }}</td>
+                  <td>{{ reports.approvedDrives }}</td>
+                  <td>{{ reports.pendingDrives || 0 }}</td>
+                  <td>{{ reports.rejectedDrives }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
     </div>
   </div>
 </template>
+
 
 <style scoped>
   .dash-head {
@@ -272,8 +362,16 @@ const logout = async () => {
     margin: 0px;
   }
 
-  .admin-search {
+  .action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
     margin: 18px 0;
+  }
+
+  .admin-search {
+    flex: 1;
   }
 
   .admin-search input {
@@ -283,6 +381,27 @@ const logout = async () => {
     border: 1px solid #ccc;
     font-size: 1rem;
   }
+
+  .export-btn {
+    background: #2196f3;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .export-btn:hover {
+    background: #1976d2;
+  }
+
+  .export-btn:disabled {
+    background: #90caf9;
+    cursor: not-allowed;
+  }
+
 
   .data-nav {
     display: flex;
@@ -308,4 +427,62 @@ const logout = async () => {
   .nav-btn:hover {
     cursor: pointer;
   }
+
+  .reports-panel {
+    margin-top: 16px;
+  }
+
+  .reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .report-card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .report-card h4 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    color: #444;
+  }
+
+  .report-card p {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1f8a21;
+  }
+
+  .summary-table-section {
+    margin-top: 20px;
+  }
+
+  .summary-table-section h3 {
+    margin-bottom: 12px;
+  }
+
+  .reports-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+  }
+
+  .reports-table th,
+  .reports-table td {
+    border: 1px solid #e0e0e0;
+    padding: 12px;
+    text-align: left;
+  }
+
+  .reports-table th {
+    background: #f4f6f8;
+  }
 </style>
+

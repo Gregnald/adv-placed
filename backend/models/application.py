@@ -13,7 +13,12 @@ class Application(db.Model):
     student_name = db.Column(db.String(120), nullable=False)
     resume_file_name = db.Column(db.String(255), default='', nullable=False)
     status = db.Column(db.String(40), default='Pending', nullable=False)
+    interview_date = db.Column(db.String(80), default='', nullable=False)
     applied_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
 
     drive = db.relationship('Drive', back_populates='applications')
     student = db.relationship('Student', back_populates='applications')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

@@ -55,7 +55,24 @@ const selectDrive = (driveId) => {
   selectedDriveId.value = driveId;
 };
 
+const toggleCompanyStatus = async () => {
+  const current = (company.value.status || '').toLowerCase();
+  const nextStatus = current === 'active' ? 'inactive' : 'active';
+  try {
+    const res = await api.updateCompanyProfile({ status: nextStatus });
+    if (res.company) {
+      company.value.status = res.company.status;
+    }
+  } catch (err) {
+    alert(err.message || 'Failed to toggle status');
+  }
+};
+
 const createDrive = async () => {
+  if ((company.value.status || '').toLowerCase() !== 'active') {
+    alert('Only active companies can create placement drives.');
+    return;
+  }
   if (!jobRef.value) return;
   const data = jobRef.value.getJobData();
   if (!data.jobTitle || !data.startDate || !data.endDate || !data.applicationDeadline) return;
@@ -77,10 +94,20 @@ const createDrive = async () => {
   await loadDashboard();
 };
 
-const updateApplicationStatus = async (id, newStatus) => {
-  await api.updateApplication(id, { status: newStatus });
+
+const interviewDates = ref({});
+
+const updateApplicationStatus = async (id, newStatus, dateVal = null) => {
+  const payload = { status: newStatus };
+  if (dateVal !== null) {
+    payload.interviewDate = dateVal;
+  } else if (interviewDates.value[id]) {
+    payload.interviewDate = interviewDates.value[id];
+  }
+  await api.updateApplication(id, payload);
   await loadDashboard();
 };
+
 
 const logout = async () => {
   try {
@@ -95,6 +122,44 @@ const logout = async () => {
   }
 };
 
+const exportingDrives = ref(false);
+const exportingApps = ref(false);
+const generatingReport = ref(false);
+
+const exportDrives = async () => {
+  exportingDrives.value = true;
+  try {
+    await api.exportAndDownload('company_drives', '', 'my_drives.csv');
+  } catch (err) {
+    alert('Failed to export CSV: ' + err.message);
+  } finally {
+    exportingDrives.value = false;
+  }
+};
+
+const exportApplications = async () => {
+  exportingApps.value = true;
+  try {
+    const driveCode = selectedDriveId.value || '';
+    await api.exportAndDownload('company_applications', driveCode, `applications_${driveCode || 'all'}.csv`);
+  } catch (err) {
+    alert('Failed to export CSV: ' + err.message);
+  } finally {
+    exportingApps.value = false;
+  }
+};
+
+const generateMonthlyReport = async () => {
+  generatingReport.value = true;
+  try {
+    await api.generateAndDownloadCompanyReport();
+  } catch (err) {
+    alert('Failed to generate report: ' + err.message);
+  } finally {
+    generatingReport.value = false;
+  }
+};
+
 onMounted(() => {
   loadDashboard().catch(() => {
     drives.value = [];
@@ -102,6 +167,7 @@ onMounted(() => {
   });
 });
 </script>
+
 
 <template>
   <div class="company-dashboard">
@@ -113,7 +179,7 @@ onMounted(() => {
 
     <div v-if="isBlacklisted" class="blacklist-message">
       <div class="blacklist-container">
-        <h2>⛔ Access Denied</h2>
+        <h2>Access Denied</h2>
         <p>You are blacklisted. Kindly contact the institution for more information.</p>
       </div>
     </div>
@@ -121,14 +187,31 @@ onMounted(() => {
     <div v-if="!isBlacklisted" class="company-info">
       <div>
         <h2>{{ company.employer }}</h2>
-        <p class="company-status">{{ company.status }}</p>
+        <div class="status-row">
+          <p class="company-status">Status: <strong>{{ company.status }}</strong></p>
+          <button
+            v-if="!isBlacklisted && ((company.status || '').toLowerCase() === 'active' || (company.status || '').toLowerCase() === 'inactive')"
+            :class="['status-pill', { inactive: (company.status || '').toLowerCase() === 'inactive' }]"
+            @click="toggleCompanyStatus"
+          >
+            {{ (company.status || '').toUpperCase() }}
+          </button>
+        </div>
       </div>
       <div class="company-actions">
-        <button @click="showCreateForm = !showCreateForm">
+        <button class="report-btn" :disabled="generatingReport" @click="generateMonthlyReport">
+          {{ generatingReport ? 'Generating Report...' : 'Generate Monthly Report' }}
+        </button>
+        <button
+          :disabled="(company.status || '').toLowerCase() !== 'active'"
+          :title="(company.status || '').toLowerCase() !== 'active' ? 'Only active companies can create drives' : ''"
+          @click="showCreateForm = !showCreateForm"
+        >
           {{ showCreateForm ? 'Hide Drive Form' : 'Create Drive' }}
         </button>
       </div>
     </div>
+
 
     <div v-if="!isBlacklisted" class="summary-row">
       <div class="summary-card">
@@ -159,7 +242,12 @@ onMounted(() => {
       </div>
 
       <div class="table-section">
-        <h3>My Drives</h3>
+        <div class="table-header-row">
+          <h3>My Drives</h3>
+          <button class="export-btn" :disabled="exportingDrives" @click="exportDrives">
+            {{ exportingDrives ? 'Exporting...' : 'Export CSV' }}
+          </button>
+        </div>
         <table class="company-drives">
           <thead>
             <tr>
@@ -195,9 +283,16 @@ onMounted(() => {
       </div>
 
       <div class="details-panel" v-if="selectedDrive">
-        <h3>Applications for {{ selectedDrive.driveId }}</h3>
+        <div class="table-header-row">
+          <h3>Applications for {{ selectedDrive.driveId }}</h3>
+          <button class="export-btn" :disabled="exportingApps" @click="exportApplications">
+            {{ exportingApps ? 'Exporting...' : 'Export CSV' }}
+          </button>
+        </div>
+
         <p><strong>Drive:</strong> {{ selectedDrive.jobTitle }}</p>
         <p><strong>Status:</strong> {{ selectedDrive.status }}</p>
+
         <table class="applications-table">
           <thead>
             <tr>
@@ -205,6 +300,7 @@ onMounted(() => {
               <th>Student</th>
               <th>Status</th>
               <th>Resume</th>
+              <th>Interview Date & Time</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -212,16 +308,58 @@ onMounted(() => {
             <tr v-for="application in selectedApplications" :key="application.applicationId">
               <td>{{ application.applicationId }}</td>
               <td>{{ application.studentName }}</td>
-              <td>{{ application.status }}</td>
+              <td>
+                <span :class="['status-badge', `status-${application.status.toLowerCase()}`]">
+                  {{ application.status }}
+                </span>
+              </td>
               <td>{{ application.resume }}</td>
               <td>
-                <button @click="updateApplicationStatus(application.applicationId, 'Shortlisted')">Shortlist</button>
-                <button @click="updateApplicationStatus(application.applicationId, 'Selected')">Select</button>
-                <button @click="updateApplicationStatus(application.applicationId, 'Rejected')">Reject</button>
+                <div class="interview-schedule-box">
+                  <input
+                    type="datetime-local"
+                    class="interview-input"
+                    :value="interviewDates[application.applicationId] || application.interviewDate || ''"
+                    @input="interviewDates[application.applicationId] = $event.target.value"
+                  />
+                  <button
+                    v-if="(interviewDates[application.applicationId] || application.interviewDate) && (interviewDates[application.applicationId] !== application.interviewDate)"
+                    class="save-date-btn"
+                    @click="updateApplicationStatus(application.applicationId, application.status, interviewDates[application.applicationId])"
+                  >
+                    Save Date
+                  </button>
+                </div>
+              </td>
+              <td>
+                <div class="action-btn-group">
+                  <button
+                    class="btn-action btn-shortlist"
+                    :class="{ active: application.status === 'Shortlisted' }"
+                    @click="updateApplicationStatus(application.applicationId, 'Shortlisted', interviewDates[application.applicationId] || application.interviewDate || '')"
+                  >
+                    Shortlist
+                  </button>
+                  <button
+                    class="btn-action btn-select"
+                    :class="{ active: application.status === 'Selected' }"
+                    @click="updateApplicationStatus(application.applicationId, 'Selected')"
+                  >
+                    Select
+                  </button>
+                  <button
+                    class="btn-action btn-reject"
+                    :class="{ active: application.status === 'Rejected' }"
+                    @click="updateApplicationStatus(application.applicationId, 'Rejected')"
+                  >
+                    Reject
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
+
       </div>
     </div>
   </div>
@@ -270,6 +408,12 @@ h1 {
   font-weight: 700;
 }
 
+.company-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .company-actions button,
 .create-button,
 .applications-table button {
@@ -286,6 +430,19 @@ h1 {
 .applications-table button:hover {
   background: #166f19;
 }
+
+.company-actions button:disabled {
+  background: #e0e0e0;
+  color: #888888;
+  border: 1px solid #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.company-actions button:disabled:hover {
+  background: #e0e0e0;
+}
+
 
 .summary-row {
   display: grid;
@@ -353,7 +510,40 @@ h1 {
   margin-bottom: 12px;
 }
 
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.status-pill {
+  border: 1px solid #1f8a21;
+  background: #1f8a21;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.status-pill:hover {
+  background: #166f19;
+}
+
+.status-pill.inactive {
+  background: #d32f2f;
+  border-color: #d32f2f;
+}
+
+.status-pill.inactive:hover {
+  background: #a12722;
+}
+
 .drive-select {
+
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid #dcdcdc;
@@ -389,12 +579,35 @@ h1 {
   background: #f4f6f8;
 }
 
-.applications-table button {
-  margin-right: 8px;
-  margin-bottom: 4px;
+.table-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.export-btn {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.export-btn:hover {
+  background: #1976d2;
+}
+
+.export-btn:disabled {
+  background: #90caf9;
+  cursor: not-allowed;
 }
 
 .blacklist-message {
+
   display: flex;
   justify-content: center;
   align-items: center;
@@ -424,4 +637,93 @@ h1 {
   font-size: 1.1em;
   margin: 0;
 }
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-block;
+}
+
+.status-badge.status-pending {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.status-shortlisted {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.status-badge.status-selected {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.status-rejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.interview-schedule-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.interview-input {
+  padding: 6px 10px;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.save-date-btn {
+  background: #0288d1 !important;
+  color: white;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  font-size: 0.8rem;
+}
+
+.action-btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  border: none;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.btn-shortlist {
+  background: #ff9800 !important;
+  color: white !important;
+}
+
+.btn-select {
+  background: #2e7d32 !important;
+  color: white !important;
+}
+
+.btn-reject {
+  background: #d32f2f !important;
+  color: white !important;
+}
+
+.btn-action:hover {
+  opacity: 0.88;
+}
+
+.btn-action.active {
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.4);
+}
 </style>
+

@@ -14,3 +14,6 @@ class Company(db.Model):
 
     user = db.relationship('User', back_populates='company_profile')
     drives = db.relationship('Drive', back_populates='company', cascade='all, delete-orphan')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

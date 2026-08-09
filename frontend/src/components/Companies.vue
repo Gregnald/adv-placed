@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { api } from '@/services/api';
 
 const props = defineProps({
   searchQuery: {
@@ -14,9 +15,10 @@ const props = defineProps({
 
 const emit = defineEmits(['company-updated']);
 
-const table_head = ['Employer', 'Website', 'HR Mail', 'Status', 'Blacklisted'];
+const table_head = ['Employer', 'Website', 'HR Mail', 'Status', 'Blacklisted', 'Monthly Report'];
 
 const localCompanies = ref([]);
+const generatingReportId = ref(null);
 
 const statusOptions = ['active', 'requested', 'inactive', 'denied'];
 
@@ -89,6 +91,17 @@ const changeStatus = (companyName, newStatus) => {
     emit('company-updated', { companyName: company.employer, payload: { status: newStatus, blacklisted: company.blacklisted } });
 };
 
+const generateReport = async (company) => {
+    generatingReportId.value = company.id;
+    try {
+        await api.generateAndDownloadCompanyReport(company.id);
+    } catch (err) {
+        alert('Failed to generate report for ' + company.employer + ': ' + err.message);
+    } finally {
+        generatingReportId.value = null;
+    }
+};
+
 </script>
 
 <template>
@@ -123,10 +136,20 @@ const changeStatus = (companyName, newStatus) => {
                     @click="changeBlacklisted(company.employer)">
                     {{ company.blacklisted ? 'YES' : 'NO' }}
                 </td>
+                <td>
+                    <button
+                        class="report-btn"
+                        :disabled="generatingReportId === company.id"
+                        @click="generateReport(company)"
+                    >
+                        {{ generatingReportId === company.id ? 'Generating...' : 'Generate Monthly Report' }}
+                    </button>
+                </td>
             </tr>
         </tbody>
     </table>
 </template>
+
 
 <style scoped>
     .companies{
@@ -214,4 +237,26 @@ const changeStatus = (companyName, newStatus) => {
         background-color: #ecf0f1;
         color: #2c3e50;
     }
-</style>
+
+    .report-btn {
+        border: none;
+        background: #1f8a21;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        transition: background-color 0.2s ease;
+    }
+
+    .report-btn:hover {
+        background: #166f19;
+    }
+
+    .report-btn:disabled {
+        background: #88c489;
+        cursor: not-allowed;
+    }
+</style>

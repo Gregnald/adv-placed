@@ -24,3 +24,6 @@ class Drive(db.Model):
 
     company = db.relationship('Company', back_populates='drives')
     applications = db.relationship('Application', back_populates='drive', cascade='all, delete-orphan')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

@@ -8,12 +8,20 @@ import { api } from '@/services/api';
 
 const profile = ref({
   name: '',
+  username: '',
+  enrollment: '',
+  firstName: '',
+  surname: '',
+  email: '',
   course: '',
   year: '',
   userType: 'Student',
   status: 'Active',
   resumeFileName: ''
 });
+
+
+
 
 const selectedResume = ref({
   fileName: '',
@@ -105,6 +113,11 @@ const applyToDrive = async (driveId) => {
 const saveProfile = async () => {
   await api.updateStudentProfile({
     name: profile.value.name,
+    username: profile.value.username,
+    enrollment: profile.value.enrollment,
+    firstName: profile.value.firstName,
+    surname: profile.value.surname,
+    email: profile.value.email,
     course: profile.value.course,
     year: profile.value.year,
     status: profile.value.status,
@@ -112,6 +125,9 @@ const saveProfile = async () => {
   });
   editingProfile.value = false;
 };
+
+
+
 
 const toggleStatus = async () => {
   profile.value.status = profile.value.status === 'Active' ? 'Inactive' : 'Active';
@@ -133,12 +149,28 @@ const logout = async () => {
   }
 };
 
+const exporting = ref(false);
+
+const exportCurrentTab = async () => {
+  exporting.value = true;
+  try {
+    const entity = selectedTab.value === 'Drives' ? 'student_active_drives' : 'student_applied_drives';
+    const filename = selectedTab.value === 'Drives' ? 'active_drives.csv' : 'applied_drives.csv';
+    await api.exportAndDownload(entity, '', filename);
+  } catch (err) {
+    alert('Failed to export CSV: ' + err.message);
+  } finally {
+    exporting.value = false;
+  }
+};
+
 onMounted(() => {
   loadDashboard().catch(() => {
     allDrives.value = [];
   });
 });
 </script>
+
 
 <template>
   <div class="student-dashboard">
@@ -150,7 +182,7 @@ onMounted(() => {
 
     <div v-if="isBlacklisted" class="blacklist-message">
       <div class="blacklist-container">
-        <h2>⛔ Access Denied</h2>
+        <h2>Access Denied</h2>
         <p>You are blacklisted. Kindly contact the institution for more information.</p>
       </div>
     </div>
@@ -160,7 +192,10 @@ onMounted(() => {
       <div class="profile-details">
         <div class="profile-row">
           <div>
-            <h2>{{ profile.name }}</h2>
+            <h2>{{ profile.name || profile.username }}</h2>
+            <p><strong>Username:</strong> {{ profile.username || 'N/A' }}</p>
+            <p><strong>Enrollment:</strong> {{ profile.enrollment || 'N/A' }}</p>
+            <p><strong>Email:</strong> {{ profile.email || 'N/A' }}</p>
             <p>{{ profile.course }}</p>
             <p>{{ profile.year }}</p>
             <p><strong>Latest Resume:</strong> {{ profile.resumeFileName || 'None uploaded' }}</p>
@@ -173,8 +208,14 @@ onMounted(() => {
         </div>
 
         <div v-if="editingProfile" class="edit-form">
-          <label>Name</label>
-          <input v-model="profile.name" />
+          <label>First Name</label>
+          <input v-model="profile.firstName" />
+          <label>Surname</label>
+          <input v-model="profile.surname" />
+          <label>Enrollment</label>
+          <input v-model="profile.enrollment" />
+          <label>Email</label>
+          <input v-model="profile.email" type="email" />
           <label>Course</label>
           <input v-model="profile.course" />
           <label>Year</label>
@@ -183,6 +224,9 @@ onMounted(() => {
           <input type="file" @change="handleResumeUpload" />
           <div class="resume-file">Latest: {{ profile.resumeFileName || 'None' }}</div>
         </div>
+
+
+
 
         <button class="edit-button" @click="editingProfile = !editingProfile">
           {{ editingProfile ? 'Cancel' : 'Edit Profile' }}
@@ -204,14 +248,23 @@ onMounted(() => {
         </button>
       </nav>
       <hr />
+      <div class="action-bar">
+        <button class="export-btn" :disabled="exporting" @click="exportCurrentTab">
+          {{ exporting ? 'Exporting...' : 'Export CSV' }}
+        </button>
+      </div>
+
+
 
       <div class="tab-container">
         <component
           :is="tabs[selectedTab]"
           :drives="selectedTab === 'Drives' ? activeDrives : appliedDrives"
           :resumeFileName="profile.resumeFileName"
+          :isStudentActive="profile.status === 'Active'"
           @apply="applyToDrive"
         />
+
         <div v-if="selectedTab === 'Drives' && !activeDrives.length" class="empty-state">No approved drives available.</div>
         <div v-if="selectedTab === 'Applied' && !appliedDrives.length" class="empty-state">No applied drives yet.</div>
       </div>
@@ -395,9 +448,45 @@ h1 {
   min-height: 48vh;
 }
 
+.data-container hr {
+  border: none;
+  height: 1px;
+  background: grey;
+  width: 100%;
+  opacity: 35%;
+  margin: 0;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 12px 0;
+}
+
 .data-nav {
   display: flex;
   justify-content: space-around;
+}
+
+.export-btn {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.export-btn:hover {
+  background: #1976d2;
+}
+
+.export-btn:disabled {
+  background: #90caf9;
+  cursor: not-allowed;
 }
 
 .nav-btn {
@@ -415,6 +504,7 @@ h1 {
 .nav-btn:hover {
   cursor: pointer;
 }
+
 
 .drives {
   width: 100%;

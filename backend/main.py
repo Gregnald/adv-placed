@@ -2,6 +2,9 @@ from flask import Flask
 
 from db import db
 from api import ensure_admin_account, register_routes
+from celery_app import celery_app
+import tasks
+
 
 
 def create_app():
@@ -17,6 +20,7 @@ def create_app():
     def allow_cors(response):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Session-Id'
+        response.headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Content-Type'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PATCH, PUT, DELETE, OPTIONS'
         return response
 
@@ -25,6 +29,8 @@ def create_app():
         ensure_admin_account()
 
     return app
+
+
 
 
 app = create_app()

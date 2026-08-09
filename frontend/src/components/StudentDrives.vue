@@ -9,6 +9,10 @@ const props = defineProps({
   resumeFileName: {
     type: String,
     default: ''
+  },
+  isStudentActive: {
+    type: Boolean,
+    default: true
   }
 });
 
@@ -26,7 +30,7 @@ const toggleExpand = (driveId) => {
 
 const isExpanded = (driveId) => expandedIds.value.has(driveId);
 
-const canApply = (drive) => drive.visibility === 'Active' && !drive.applied && props.resumeFileName;
+const canApply = (drive) => drive.visibility === 'Active' && !drive.applied && props.resumeFileName && props.isStudentActive;
 
 const statusText = (drive) => drive.visibility || drive.status;
 </script>
@@ -61,13 +65,15 @@ const statusText = (drive) => drive.visibility || drive.status;
             <button
               class="apply-button"
               :disabled="drive.applied || !canApply(drive)"
+              :title="!props.isStudentActive ? 'Your profile status is Inactive. Set your status to ACTIVE in your profile to apply.' : ''"
               @click.stop="emit('apply', drive.driveId)"
             >
-              {{ drive.applied ? 'Applied' : !props.resumeFileName ? 'Upload Resume' : statusText(drive) !== 'Active' ? 'Unavailable' : 'Apply' }}
+              {{ drive.applied ? 'Applied' : !props.isStudentActive ? 'Status Inactive' : !props.resumeFileName ? 'Upload Resume' : statusText(drive) !== 'Active' ? 'Unavailable' : 'Apply' }}
             </button>
             <p v-if="drive.applied && drive.appliedResume" class="resume-note">Resume: {{ drive.appliedResume }}</p>
           </td>
         </tr>
+
         <tr v-if="isExpanded(drive.driveId)" class="details-row">
           <td colspan="7" class="details-cell">
             <div class="details-grid">

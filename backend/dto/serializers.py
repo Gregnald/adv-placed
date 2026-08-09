@@ -37,17 +37,35 @@ def session_to_dict(session):
 
 
 def student_to_dict(student):
+    fn = getattr(student, 'first_name', '') or ''
+    sn = getattr(student, 'surname', '') or ''
+    uname = getattr(student, 'username', '') or (student.user.username if getattr(student, 'user', None) else '')
+    full_name = f"{fn} {sn}".strip() if (fn or sn) else uname
+
+    st_status = student.status
+    if getattr(student, 'applications', None):
+        if any((app.status or '').lower() in ['selected', 'placed'] for app in student.applications):
+            st_status = 'Placed'
+
     return {
         'id': student.id,
         'userId': student.user_id,
         'enrollment': student.enrollment,
-        'name': student.name,
+        'username': uname,
+        'name': full_name,
+        'firstName': fn,
+        'surname': sn,
+        'email': getattr(student, 'email', '') or '',
         'course': student.course,
         'year': student.year,
-        'status': student.status,
+        'status': st_status,
         'blacklisted': student.blacklisted,
         'resumeFileName': student.resume_file_name
     }
+
+
+
+
 
 
 def company_to_dict(company):
@@ -103,6 +121,7 @@ def application_to_dict(application):
         'studentName': application.student_name,
         'resume': application.resume_file_name,
         'status': application.status,
+        'interviewDate': getattr(application, 'interview_date', '') or '',
         'appliedAt': application.applied_at.isoformat()
     }
 
@@ -125,9 +144,11 @@ def drive_for_student(drive, application=None):
     if application:
         payload['applied'] = True
         payload['applicationStatus'] = application.status
+        payload['interviewDate'] = getattr(application, 'interview_date', '') or ''
         payload['appliedResume'] = application.resume_file_name
         payload['accepted'] = application.status == 'Selected'
     else:
         payload['applied'] = False
         payload['accepted'] = False
-    return payload
+        payload['interviewDate'] = ''
+    return payload

@@ -14,3 +14,6 @@ class User(db.Model):
 
     student_profile = db.relationship('Student', back_populates='user', uselist=False, cascade='all, delete-orphan')
     company_profile = db.relationship('Company', back_populates='user', uselist=False, cascade='all, delete-orphan')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

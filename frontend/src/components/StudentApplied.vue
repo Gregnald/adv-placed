@@ -30,10 +30,22 @@ const getStatus = (drive) => {
 const statusClass = (drive) => {
   const status = getStatus(drive);
   return {
-    'status-accepted': status === 'Accepted',
+    'status-accepted': status === 'Accepted' || status === 'Selected',
+    'status-shortlisted': status === 'Shortlisted',
     'status-rejected': status === 'Rejected',
     'status-pending': status === 'Pending'
   };
+};
+
+const formatInterviewDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+  } catch (e) {
+    return dateStr;
+  }
 };
 </script>
 
@@ -60,6 +72,10 @@ const statusClass = (drive) => {
           </tr>
           <tr v-if="isExpanded(drive.driveId)" class="details-row">
             <td colspan="5" class="details-cell">
+              <div v-if="drive.interviewDate" class="interview-notice">
+                <span><strong>Interview Scheduled:</strong> {{ formatInterviewDate(drive.interviewDate) }}</span>
+              </div>
+
               <div class="details-grid">
                 <div class="detail-group">
                   <h4>Drive Overview</h4>
@@ -67,6 +83,7 @@ const statusClass = (drive) => {
                   <p><strong>Start Date:</strong> {{ drive.startDate }}</p>
                   <p><strong>End Date:</strong> {{ drive.endDate }}</p>
                   <p><strong>Application Status:</strong> {{ getStatus(drive) }}</p>
+                  <p v-if="drive.interviewDate"><strong>Interview Date & Time:</strong> {{ formatInterviewDate(drive.interviewDate) }}</p>
                   <p><strong>Deadline:</strong> {{ drive.applicationDeadline || 'N/A' }}</p>
                   <p><strong>Min CGPA:</strong> {{ drive.minCgpa || 'N/A' }}</p>
                 </div>
@@ -126,6 +143,17 @@ const statusClass = (drive) => {
   padding: 16px;
 }
 
+.interview-notice {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-left: 4px solid #f57c00;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: #e65100;
+  font-size: 0.95rem;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -146,6 +174,11 @@ const statusClass = (drive) => {
   font-weight: 700;
 }
 
+.status-shortlisted {
+  color: #e65100;
+  font-weight: 700;
+}
+
 .status-rejected {
   color: #d32f2f;
   font-weight: 700;
@@ -161,4 +194,4 @@ const statusClass = (drive) => {
   text-align: center;
   color: #666;
 }
-</style>
+</style>

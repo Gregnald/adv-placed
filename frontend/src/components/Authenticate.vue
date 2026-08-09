@@ -19,7 +19,9 @@ const props = defineProps({
 const user = ref('student');
 const username = ref('');
 const password = ref('');
-const message = ref('');
+const studentFirstName = ref('');
+const studentSurname = ref('');
+const studentEmail = ref('');
 const companyName = ref('');
 const companyHRMail = ref('');
 const companyWebsite = ref('');
@@ -45,6 +47,20 @@ const handleSubmit = async function(){
             password: password.value,
             role: user.value
         };
+
+        if (props.registering && user.value === 'student') {
+            if (!studentFirstName.value || !studentSurname.value) {
+                message.value = 'Please provide your first name and surname.';
+                return;
+            }
+            if (!studentEmail.value) {
+                message.value = 'Please provide an email address.';
+                return;
+            }
+            payload.firstName = studentFirstName.value;
+            payload.surname = studentSurname.value;
+            payload.email = studentEmail.value;
+        }
 
         if (props.registering && user.value === 'company') {
             if (!companyName.value) {
@@ -91,6 +107,19 @@ const handleSubmit = async function(){
                 <label for="password">Password</label>
                 <input v-model="password" id="password" type="password">
             </div>
+            <div v-if="registering && user === 'student'" class="form-row">
+                <label for="student-first-name">First Name</label>
+                <input v-model="studentFirstName" id="student-first-name" type="text" placeholder="John" required />
+            </div>
+            <div v-if="registering && user === 'student'" class="form-row">
+                <label for="student-surname">Surname</label>
+                <input v-model="studentSurname" id="student-surname" type="text" placeholder="Doe" required />
+            </div>
+            <div v-if="registering && user === 'student'" class="form-row">
+                <label for="student-email">Email</label>
+                <input v-model="studentEmail" id="student-email" type="email" placeholder="student@example.com" required />
+            </div>
+
             <div v-if="registering && user === 'company'" class="form-row">
                 <label for="company-name">Company Name</label>
                 <input v-model="companyName" id="company-name" type="text" />
@@ -110,6 +139,7 @@ const handleSubmit = async function(){
         </form>
     </div>
 </template>
+
 
 <style scoped>
     .jd-checkbox {

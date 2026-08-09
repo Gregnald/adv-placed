@@ -12,3 +12,6 @@ class SessionAuth(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     user = db.relationship('User')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
