@@ -1,7 +1,7 @@
 from flask import Flask
 
 from db import db
-from api import ensure_admin_account, register_routes
+from routes import ensure_admin_account, register_routes
 from celery_app import celery_app
 import tasks
 
